@@ -1,0 +1,3 @@
+[console_scripts]
+strawberry=strawberry.cli:run
+
