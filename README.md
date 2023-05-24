@@ -2,6 +2,7 @@
 
 - This is an example project for using these techonologies
 - There is an accompanying NextJS frontend
+- This API provides CRUD functionality for the business card DB and generates a png image of a new card using Pillow library when card entries are created in the DB
 
 ## GraphQL
 
@@ -21,3 +22,4 @@
 
 - [Strawberry FastAPI docs](https://strawberry.rocks/docs/integrations/fastapi)
 - [Supabase Python docs](https://supabase.com/docs/reference/python/initializing)
+- [Python Imaging Library](https://pypi.org/project/Pillow/)
