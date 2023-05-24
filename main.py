@@ -14,6 +14,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 @strawberry.type
 class BusinessCard:
     id: Optional[int]
@@ -25,6 +26,7 @@ class BusinessCard:
     style: str
     theme: str
     image_url: Optional[str]
+
 
 @strawberry.type
 class Query:

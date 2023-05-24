@@ -1,6 +1,7 @@
 import io
 from PIL import ImageDraw, ImageFont
 
+
 def draw_card(base_image, full_name, job_title, email, phone_number, linkedin):
     draw = ImageDraw.Draw(base_image)
     font = ImageFont.truetype("./utils/ARIBL0.ttf", 15)
@@ -11,8 +12,6 @@ def draw_card(base_image, full_name, job_title, email, phone_number, linkedin):
     draw.text((10, 90), f"LinkedIn: {linkedin}", fill="black", font=font)
 
     img_io = io.BytesIO()
-    base_image.save(img_io, 'PNG')
+    base_image.save(img_io, "PNG")
     img_io.seek(0)
     return img_io
-
-
