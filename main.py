@@ -21,7 +21,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://business-card-frontend.vercel.app",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -75,7 +79,7 @@ async def add_authentication(request: Request, call_next):
     if request.url.path.startswith("/graphql"):
         if request.method == "OPTIONS":
             return await call_next(request)
-        
+
         token = request.headers.get("authorization", "").replace("Bearer ", "")
         if not token:
             return Response("Unauthorized", status_code=401)
@@ -89,6 +93,7 @@ async def add_authentication(request: Request, call_next):
         response = await call_next(request)
         return response
     return await call_next(request)
+
 
 @strawberry.type
 class PublicQuery:
@@ -106,6 +111,7 @@ class PublicQuery:
 
         except Exception:
             return []
+
 
 @strawberry.type
 class Query:
