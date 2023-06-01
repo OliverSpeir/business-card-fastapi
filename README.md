@@ -11,7 +11,8 @@
 ## Supabase
 
 - Using [supabase-py](https://github.com/supabase-community/supabase-py) which is recommended by Supabase
-- This project uses the Storage buckets and Postgres DB offered by Supabase
+- Uses the Storage buckets and Postgres DB offered by Supabase
+- Uses Supabase Auth to validate the authenticated requests from frontend
 
 ## Serverless Function
 

@@ -40,7 +40,7 @@ class BusinessCard:
     job_title: str
     full_name: str
     phone_number: str
-    linkedin: str
+    website: str
     image_url: Optional[str]
     user_id: str
     base_card: str
@@ -141,7 +141,7 @@ class Mutation:
         job_title: str,
         full_name: str,
         phone_number: str,
-        linkedin: str,
+        website: str,
         base_card: str,
     ) -> BusinessCard:
         # check if card already exists
@@ -152,9 +152,11 @@ class Mutation:
             .eq("job_title", job_title)
             .eq("full_name", full_name)
             .eq("phone_number", phone_number)
-            .eq("linkedin", linkedin)
+            .eq("website", website)
             .execute()
         )
+        if check_duplicate.data != []:
+            print("duplicate")
         # if it doesnt already exist make one
         if check_duplicate.data == []:
             user_id = info.context["request"].state.user_id
@@ -163,12 +165,12 @@ class Mutation:
                 "job_title": job_title,
                 "full_name": full_name,
                 "phone_number": phone_number,
-                "linkedin": linkedin,
+                "website": website,
                 "user_id": user_id,
                 "image_url": "placeholder",
                 "base_card": base_card,
             }
-
+            print(base_card)
             # insert into db with placeholder image_url so we can get the correct id for the image
             table_no_img = supabase.table("business_cards").insert(new_card).execute()
             id = table_no_img.data[0]["id"]
@@ -193,7 +195,7 @@ class Mutation:
 
             # Draw the new card
             img_io = draw_card(
-                base_image, full_name, job_title, email, phone_number, linkedin
+                base_image, base_card, full_name, job_title, email, phone_number, website
             )
 
             # Upload the modified image to Supabase storage
@@ -216,7 +218,7 @@ class Mutation:
         job_title: Optional[str] = None,
         full_name: Optional[str] = None,
         phone_number: Optional[str] = None,
-        linkedin: Optional[str] = None,
+        website: Optional[str] = None,
         base_card: Optional[str] = None,
     ) -> UpdateResponse:
         user_id = info.context["request"].state.user_id
@@ -250,9 +252,9 @@ class Mutation:
                 "phone_number": phone_number
                 if phone_number is not None
                 else result.data[0]["phone_number"],
-                "linkedin": linkedin
-                if linkedin is not None
-                else result.data[0]["linkedin"],
+                "website": website
+                if website is not None
+                else result.data[0]["website"],
                 "user_id": user_id,
                 "image_url": "placeholder",
                 "base_card": base_card
@@ -273,11 +275,12 @@ class Mutation:
             # Draw the new card
             img_io = draw_card(
                 base_image,
+                base_card,
                 new_card_data["full_name"],
                 new_card_data["job_title"],
                 new_card_data["email"],
                 new_card_data["phone_number"],
-                new_card_data["linkedin"],
+                new_card_data["website"],
             )
 
             # Upload the modified image to Supabase storage
