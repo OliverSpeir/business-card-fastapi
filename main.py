@@ -170,7 +170,6 @@ class Mutation:
                 "image_url": "placeholder",
                 "base_card": base_card,
             }
-            print(base_card)
             # insert into db with placeholder image_url so we can get the correct id for the image
             table_no_img = supabase.table("business_cards").insert(new_card).execute()
             id = table_no_img.data[0]["id"]
@@ -235,10 +234,8 @@ class Mutation:
             supabase.table("business_cards").delete().eq("id", id).execute()
 
             # Remove the current image from the bucket
-            folder_and_filename = "/".join(
-                result.data[0]["image_url"].rsplit("/", 2)[-2:]
-            )
-            supabase.storage.from_("business_card_images").remove(folder_and_filename)
+            filename = result.data[0]["image_url"].rsplit("/", 1)[-1]
+            supabase.storage.from_("business_card_images").remove(filename)
 
             # Prepare the new card data
             new_card_data = {
