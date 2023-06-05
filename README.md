@@ -10,9 +10,10 @@
 
 ## Supabase
 
-- Using [supabase-py](https://github.com/supabase-community/supabase-py) which is recommended by Supabase
+- Uses Supabase Auth
+- Using [supabase-py](https://github.com/supabase-community/supabase-py)
+- This works with RLS which is offered by supabase (optional)
 - Uses the Storage buckets and Postgres DB offered by Supabase
-- Uses Supabase Auth to validate the authenticated requests from frontend
 
 ## Serverless Function
 

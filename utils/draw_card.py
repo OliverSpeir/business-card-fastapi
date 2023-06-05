@@ -48,7 +48,6 @@ def get_font_size(text, addition = 0):
     return font
 def get_y_position(font):
     font_size = font.size
-    print(font, font_size)
     if font_size >= 32:
         return int(7)
     elif font_size <= 28:
@@ -60,7 +59,6 @@ def draw_card(
     base_image, base_card, full_name, job_title, email, phone_number, website
 ):
     if base_card == "BusinessCard.png":
-        print("drawing default card")
         draw = ImageDraw.Draw(base_image)
         font = ImageFont.truetype("./utils/ARIBL0.ttf", 15)
         draw.text((10, 10), f"Full Name: {full_name}", fill="black", font=font)
@@ -95,16 +93,8 @@ def draw_card(
     if base_card == "Business-Card-1.png":
         blank_card = clear_card(base_image, "#CCCCCC")
         draw = ImageDraw.Draw(blank_card)
-        # font_name = ImageFont.truetype("./utils/ContextLight.ttf", 52)
-        # font = ImageFont.truetype("./utils/ContextLight.ttf", 32)
         qr_code = generate_qr_code(website)
         blank_card.paste(qr_code, (blank_card.width - qr_code.width - 670, 75))
-
-        def draw_aligned_text(position_y, text, font, offset):
-            text_width, _ = draw.textsize(text, font=font)
-            centered = (blank_card.width - text_width) / 2
-            offset_position = centered - offset
-            draw.text((offset_position, position_y), text, fill="black", font=font)
 
         name_font = get_font_size(full_name, 4)
         job_font = get_font_size(job_title, -4)
@@ -121,20 +111,3 @@ def draw_card(
         blank_card.save(img_io, "PNG")
         img_io.seek(0)
         return img_io
-
-    # if base_card == "Business-Card-1.png":
-    #     blank_card = clear_card(base_image, "#CCCCCC")
-    #     draw = ImageDraw.Draw(blank_card)
-    #     font_name = ImageFont.truetype("./utils/ContextLight.ttf", 52)
-    #     font = ImageFont.truetype("./utils/ContextLight.ttf", 32)
-    #     qr_code = generate_qr_code(website)
-    #     blank_card.paste(qr_code, (blank_card.width - qr_code.width - 670, 75))
-    #     draw.text((80, 400), f"{full_name}", fill="black", font=font_name)
-    #     draw.text((100, 480), f"{job_title}", fill="black", font=font)
-    #     draw.text((640, 140), f"{phone_number}", fill="black", font=font)
-    #     draw.text((640, 270), f"{email}", fill="black", font=font)
-    #     draw.text((640, 410), f"{website}", fill="black", font=font)
-    #     img_io = io.BytesIO()
-    #     blank_card.save(img_io, "PNG")
-    #     img_io.seek(0)
-    #     return img_io

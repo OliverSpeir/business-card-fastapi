@@ -1,6 +1,6 @@
 from typing import List, Optional
 import strawberry
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, Response
 from strawberry.fastapi import GraphQLRouter
 from supabase import create_client, Client
 from strawberry.schema.config import StrawberryConfig
@@ -10,27 +10,22 @@ from dotenv import load_dotenv
 import os
 import io
 from fastapi.middleware.cors import CORSMiddleware
-import logging
 
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+ORIGINS = os.getenv("ORIGINS")
 
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://business-card-frontend.vercel.app",
-        "http://localhost:3000",
-    ],
+    allow_origins=ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 @strawberry.type
@@ -81,15 +76,18 @@ async def add_authentication(request: Request, call_next):
             return await call_next(request)
 
         token = request.headers.get("authorization", "").replace("Bearer ", "")
+
         if not token:
             return Response("Unauthorized", status_code=401)
-
         try:
-            data = supabase.auth.get_user(token)
+            auth = supabase.auth.get_user(token)
+            supabase.postgrest.auth(token)
         except Exception as e:
+            print(e)
             return Response("Invalid user token", status_code=401)
 
-        request.state.user_id = data.user.id
+        request.state.user_id = auth.user.id
+        request.state.token = token
         response = await call_next(request)
         return response
     return await call_next(request)
@@ -144,7 +142,7 @@ class Mutation:
         website: str,
         base_card: str,
     ) -> BusinessCard:
-        # check if card already exists
+        user_id = info.context["request"].state.user_id
         check_duplicate = (
             supabase.table("business_cards")
             .select("*")
@@ -153,13 +151,14 @@ class Mutation:
             .eq("full_name", full_name)
             .eq("phone_number", phone_number)
             .eq("website", website)
+            .eq("base_card", base_card)
             .execute()
         )
         if check_duplicate.data != []:
             print("duplicate")
+
         # if it doesnt already exist make one
         if check_duplicate.data == []:
-            user_id = info.context["request"].state.user_id
             new_card = {
                 "email": email,
                 "job_title": job_title,
@@ -194,7 +193,13 @@ class Mutation:
 
             # Draw the new card
             img_io = draw_card(
-                base_image, base_card, full_name, job_title, email, phone_number, website
+                base_image,
+                base_card,
+                full_name,
+                job_title,
+                email,
+                phone_number,
+                website,
             )
 
             # Upload the modified image to Supabase storage
@@ -263,7 +268,6 @@ class Mutation:
             new_card = supabase.table("business_cards").insert(new_card_data).execute()
             new_id = new_card.data[0]["id"]
 
-            # Generate a new image and upload it to the bucket
             # Load the base business card image
             response = supabase.storage.from_("default_cards").download(base_card)
             img_io = io.BytesIO(response)
@@ -292,7 +296,6 @@ class Mutation:
                 "id", new_id
             ).execute()
 
-            # Return the new business card
             return UpdateBusinessCardSuccess(
                 business_card=BusinessCard(**new_card.data[0])
             )
