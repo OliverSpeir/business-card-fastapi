@@ -388,6 +388,7 @@ class Mutation:
         slug: str,
     ) -> DigitalCard:
         user_id = info.context["request"].state.user_id
+        complete_slug = "https://business-card-frontend.vercel.app/cards/" + slug
         new_card = {
             "email": email,
             "job_title": job_title,
@@ -395,12 +396,12 @@ class Mutation:
             "phone_number": phone_number,
             "website": website,
             "user_id": user_id,
-            "slug": slug,
+            "slug": complete_slug,
             "qr_code": "placeholder",
         }
         table_no_code = supabase.table("digital_cards").insert(new_card).execute()
         id = table_no_code.data[0]["id"]
-        code = digital_code(slug)
+        code = digital_code(complete_slug)
         supabase.storage.from_("digital_card_codes").upload(
             f"{id}.png", code.getvalue()
         )
