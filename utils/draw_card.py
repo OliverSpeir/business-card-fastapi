@@ -34,7 +34,8 @@ def clear_card(image, color):
     draw.rectangle(right_rectangle, fill=color)
     return image
 
-def get_font_size(text, addition = 0):
+
+def get_font_size(text, addition=0):
     font_size = 52
     if len(text) <= 20:
         font_size = 52 + addition
@@ -42,10 +43,12 @@ def get_font_size(text, addition = 0):
         font_size = 42 + addition
     elif len(text) <= 40:
         font_size = 32 + addition
-    else: 
+    else:
         font_size = 28 + addition
     font = ImageFont.truetype("./utils/ContextLight.ttf", font_size)
     return font
+
+
 def get_y_position(font):
     font_size = font.size
     if font_size >= 32:
@@ -54,6 +57,7 @@ def get_y_position(font):
         return int(10)
     elif font_size >= 42:
         return int(0)
+
 
 def draw_card(
     base_image, base_card, full_name, job_title, email, phone_number, website
@@ -101,13 +105,54 @@ def draw_card(
         phone_font = get_font_size(phone_number, -4)
         email_font = get_font_size(email, -6)
         website_font = get_font_size(website)
-        draw.text(((blank_card.width - draw.textsize(full_name, font=name_font)[0]) / 2 - 298, 400), full_name, fill="black", font=name_font)
-        draw.text(((blank_card.width - draw.textsize(job_title, font=job_font)[0]) / 2 - 303, 480), job_title, fill="black", font=job_font)
-        draw.text((640, (140 + get_y_position(phone_font))), f"{phone_number}", fill="black", font=phone_font)
-        draw.text((640, (275 + get_y_position(email_font))), f"{email}", fill="black", font=email_font)
-        draw.text((640, (410 + get_y_position(website_font))), f"{website}", fill="black", font=website_font)
+        draw.text(
+            (
+                (blank_card.width - draw.textsize(full_name, font=name_font)[0]) / 2
+                - 298,
+                400,
+            ),
+            full_name,
+            fill="black",
+            font=name_font,
+        )
+        draw.text(
+            (
+                (blank_card.width - draw.textsize(job_title, font=job_font)[0]) / 2
+                - 303,
+                480,
+            ),
+            job_title,
+            fill="black",
+            font=job_font,
+        )
+        draw.text(
+            (640, (140 + get_y_position(phone_font))),
+            f"{phone_number}",
+            fill="black",
+            font=phone_font,
+        )
+        draw.text(
+            (640, (275 + get_y_position(email_font))),
+            f"{email}",
+            fill="black",
+            font=email_font,
+        )
+        draw.text(
+            (640, (410 + get_y_position(website_font))),
+            f"{website}",
+            fill="black",
+            font=website_font,
+        )
 
         img_io = io.BytesIO()
         blank_card.save(img_io, "PNG")
         img_io.seek(0)
         return img_io
+
+
+def digital_code(slug):
+    code = generate_qr_code(slug, back_color="white")
+    img_io = io.BytesIO()
+    code.save(img_io, format="PNG")
+    img_io.seek(0)
+    return img_io

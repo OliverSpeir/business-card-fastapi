@@ -5,7 +5,7 @@ from strawberry.fastapi import GraphQLRouter
 from supabase import create_client, Client
 from strawberry.schema.config import StrawberryConfig
 from PIL import Image
-from utils.draw_card import draw_card
+from utils.draw_card import draw_card, digital_code
 from dotenv import load_dotenv
 import os
 import io
@@ -42,13 +42,31 @@ class BusinessCard:
 
 
 @strawberry.type
-class DeleteBusinessCardSuccess:
+class DigitalCard:
+    id: Optional[int]
+    email: str
+    job_title: str
+    full_name: str
+    phone_number: str
+    website: str
+    user_id: str
+    slug: str
+    qr_code: str
+
+
+@strawberry.type
+class DeleteSuccess:
     message: str
 
 
 @strawberry.type
 class UpdateBusinessCardSuccess:
     business_card: BusinessCard
+
+
+@strawberry.type
+class UpdateDigitalCardSuccess:
+    digital_card: DigitalCard
 
 
 @strawberry.type
@@ -61,11 +79,22 @@ class NotAuthorizedError:
     message: str = "Not authorized"
 
 
+@strawberry.type
+class DuplicateCardError:
+    message: str = "That card already exists"
+
+
 UpdateResponse = strawberry.union(
     "UpdateResponse", [UpdateBusinessCardSuccess, NotFoundError, NotAuthorizedError]
 )
 DeleteResponse = strawberry.union(
-    "DeleteResponse", [DeleteBusinessCardSuccess, NotFoundError, NotAuthorizedError]
+    "DeleteResponse", [DeleteSuccess, NotFoundError, NotAuthorizedError]
+)
+UpdateDigitalResponse = strawberry.union(
+    "UpdateResponse", [UpdateDigitalCardSuccess, NotFoundError, NotAuthorizedError]
+)
+DigitalCardResponse = strawberry.union(
+    "DigitalCardResponse", [DigitalCard, NotFoundError]
 )
 
 
@@ -109,7 +138,21 @@ class PublicQuery:
 
         except Exception:
             return []
-
+    @strawberry.field
+    async def digital_cards(self, info, slug: str) -> DigitalCardResponse:
+        try:
+            card = (
+                supabase.table("digital_cards")
+                .select("*")
+                .eq("slug", slug)
+                .execute()
+            )
+            if card.data[0]:
+                return DigitalCard(**card.data[0])
+            else:
+                return NotFoundError()
+        except Exception:
+            return NotFoundError()
 
 @strawberry.type
 class Query:
@@ -124,6 +167,21 @@ class Query:
                 .execute()
             )
             return [BusinessCard(**card) for card in result.data]
+
+        except Exception:
+            return []
+
+    @strawberry.field
+    async def digital_cards(self, info) -> List[DigitalCard]:
+        user_id = info.context["request"].state.user_id
+        try:
+            result = (
+                supabase.table("digital_cards")
+                .select("*")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            return [DigitalCard(**card) for card in result.data]
 
         except Exception:
             return []
@@ -154,8 +212,8 @@ class Mutation:
             .eq("base_card", base_card)
             .execute()
         )
-        if check_duplicate.data != []:
-            print("duplicate")
+        if check_duplicate.data:
+            return DuplicateCardError()
 
         # if it doesnt already exist make one
         if check_duplicate.data == []:
@@ -203,15 +261,14 @@ class Mutation:
             )
 
             # Upload the modified image to Supabase storage
-            path = f"{id}.png"
             supabase.storage.from_("business_card_images").upload(
-                path, img_io.getvalue()
+                f"{id}.png", img_io.getvalue()
+            )
+            image_url = (
+                f"{SUPABASE_URL}/storage/v1/object/public/business_card_images/{id}.png"
             )
 
             return BusinessCard(**table_with_img.data[0])
-        # if duplicate exists return it
-        if check_duplicate.data != []:
-            return BusinessCard(**check_duplicate.data[0])
 
     @strawberry.mutation
     async def update_business_card(
@@ -317,7 +374,137 @@ class Mutation:
             supabase.storage.from_(f"business_card_images").remove(filename)
             # Delete the entry from the table
             supabase.table("business_cards").delete().eq("id", id).execute()
-            return DeleteBusinessCardSuccess(message=f"Deleted card {id}")
+            return DeleteSuccess(message=f"Deleted card {id}")
+
+    @strawberry.mutation
+    async def create_digital_card(
+        self,
+        info,
+        email: str,
+        job_title: str,
+        full_name: str,
+        phone_number: str,
+        website: str,
+        slug: str,
+    ) -> DigitalCard:
+        user_id = info.context["request"].state.user_id
+        new_card = {
+            "email": email,
+            "job_title": job_title,
+            "full_name": full_name,
+            "phone_number": phone_number,
+            "website": website,
+            "user_id": user_id,
+            "slug": slug,
+            "qr_code": "placeholder",
+        }
+        table_no_code = supabase.table("digital_cards").insert(new_card).execute()
+        id = table_no_code.data[0]["id"]
+        code = digital_code(slug)
+        supabase.storage.from_("digital_card_codes").upload(
+            f"{id}.png", code.getvalue()
+        )
+        code_url = (
+            f"{SUPABASE_URL}/storage/v1/object/public/digital_card_codes/{id}.png"
+        )
+        table_with_code = (
+            supabase.table("digital_cards")
+            .update({"qr_code": code_url})
+            .match({"id": id})
+            .execute()
+        )
+        return DigitalCard(**table_with_code.data[0])
+
+    @strawberry.mutation
+    async def update_digital_card(
+        self,
+        info,
+        id: int,
+        email: Optional[str] = None,
+        job_title: Optional[str] = None,
+        full_name: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        website: Optional[str] = None,
+        slug: Optional[str] = None,
+    ) -> UpdateResponse:
+        user_id = info.context["request"].state.user_id
+        # Check if the card exists and belongs to the current user
+        result = supabase.table("digital_cards").select("*").eq("id", id).execute()
+        if not result.data:
+            return NotFoundError()
+        elif result.data[0]["user_id"] != user_id:
+            return NotAuthorizedError(
+                message="Not authorized to update this digital card"
+            )
+        else:
+            slug_changed = slug is not None and slug != result.data[0]["slug"]
+
+            if slug_changed:
+                # Delete the old qr_code
+                filename = result.data[0]["qr_code"].rsplit("/", 1)[-1]
+                supabase.storage.from_("digital_card_codes").remove(filename)
+
+            # Prepare the new card data
+            new_card_data = {
+                "email": email if email is not None else result.data[0]["email"],
+                "job_title": job_title
+                if job_title is not None
+                else result.data[0]["job_title"],
+                "full_name": full_name
+                if full_name is not None
+                else result.data[0]["full_name"],
+                "phone_number": phone_number
+                if phone_number is not None
+                else result.data[0]["phone_number"],
+                "website": website
+                if website is not None
+                else result.data[0]["website"],
+                "user_id": user_id,
+                "slug": slug if slug is not None else result.data[0]["slug"],
+                "qr_code": "placeholder" if slug_changed else result.data[0]["qr_code"],
+            }
+
+            # Update the card in the database
+            new_card = (
+                supabase.table("digital_cards")
+                .update(new_card_data)
+                .eq("id", id)
+                .execute()
+            )
+
+            if slug_changed:
+                # Generate the new qr_code
+                code = digital_code(new_card_data["slug"])
+                supabase.storage.from_("digital_card_codes").upload(
+                    f"{id}.png", code.getvalue()
+                )
+                code_url = f"{SUPABASE_URL}/storage/v1/object/public/digital_card_codes/{id}.png"
+                supabase.table("digital_cards").update({"qr_code": code_url}).eq(
+                    "id", id
+                ).execute()
+
+            return UpdateDigitalCardSuccess(
+                digital_card=DigitalCard(**new_card.data[0])
+            )
+
+    @strawberry.mutation
+    async def delete_digital_card(self, info, id: int) -> DeleteResponse:
+        user_id = info.context["request"].state.user_id
+        # Check if the card exists and belongs to the current user
+        result = supabase.table("digital_cards").select("*").eq("id", id).execute()
+        if not result.data:
+            return NotFoundError()
+        elif result.data[0]["user_id"] != user_id:
+            return NotAuthorizedError(
+                message="Not authorized to delete this digital card"
+            )
+        else:
+            # Delete the qr_code from the bucket
+            filename = result.data[0]["qr_code"].rsplit("/", 1)[-1]
+            supabase.storage.from_(f"digital_card_codes").remove(filename)
+            # Delete the entry from the table
+            supabase.table("digital_cards").delete().eq("id", id).execute()
+            return DeleteSuccess(message=f"Deleted digital card {id}")
 
 
 authenticated_schema = strawberry.Schema(
