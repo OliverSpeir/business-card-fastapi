@@ -91,7 +91,7 @@ DeleteResponse = strawberry.union(
     "DeleteResponse", [DeleteSuccess, NotFoundError, NotAuthorizedError]
 )
 UpdateDigitalResponse = strawberry.union(
-    "UpdateResponse", [UpdateDigitalCardSuccess, NotFoundError, NotAuthorizedError]
+    "UpdateDigitalResponse", [UpdateDigitalCardSuccess, NotFoundError, NotAuthorizedError]
 )
 DigitalCardResponse = strawberry.union(
     "DigitalCardResponse", [DigitalCard, NotFoundError]
@@ -396,7 +396,7 @@ class Mutation:
             "phone_number": phone_number,
             "website": website,
             "user_id": user_id,
-            "slug": complete_slug,
+            "slug": slug,
             "qr_code": "placeholder",
         }
         table_no_code = supabase.table("digital_cards").insert(new_card).execute()
@@ -427,7 +427,7 @@ class Mutation:
         phone_number: Optional[str] = None,
         website: Optional[str] = None,
         slug: Optional[str] = None,
-    ) -> UpdateResponse:
+    ) -> UpdateDigitalResponse:
         user_id = info.context["request"].state.user_id
         # Check if the card exists and belongs to the current user
         result = supabase.table("digital_cards").select("*").eq("id", id).execute()
@@ -480,7 +480,7 @@ class Mutation:
                     f"{id}.png", code.getvalue()
                 )
                 code_url = f"{SUPABASE_URL}/storage/v1/object/public/digital_card_codes/{id}.png"
-                supabase.table("digital_cards").update({"qr_code": code_url}).eq(
+                new_card = supabase.table("digital_cards").update({"qr_code": code_url}).eq(
                     "id", id
                 ).execute()
 
