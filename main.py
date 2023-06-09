@@ -105,20 +105,14 @@ async def add_authentication(request: Request, call_next):
             return await call_next(request)
 
         token = request.headers.get("authorization", "").replace("Bearer ", "")
-
         if not token:
             return Response("Unauthorized", status_code=401)
         try:
             auth = supabase.auth.get_user(token)
+            request.state.user_id = auth.user.id
             supabase.postgrest.auth(token)
-        except Exception as e:
-            print(e)
+        except Exception:
             return Response("Invalid user token", status_code=401)
-
-        request.state.user_id = auth.user.id
-        request.state.token = token
-        response = await call_next(request)
-        return response
     return await call_next(request)
 
 
