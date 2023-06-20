@@ -52,6 +52,7 @@ class DigitalCard:
     user_id: str
     slug: str
     qr_code: str
+    profile_pic: str
 
 
 @strawberry.type
@@ -379,6 +380,7 @@ class Mutation:
         full_name: str,
         phone_number: str,
         website: str,
+        profile_pic: str,
         slug: str,
     ) -> DigitalCard:
         user_id = info.context["request"].state.user_id
@@ -390,6 +392,7 @@ class Mutation:
             "phone_number": phone_number,
             "website": website,
             "user_id": user_id,
+            "profile_pic": profile_pic,
             "slug": slug,
             "qr_code": "placeholder",
         }
@@ -420,6 +423,7 @@ class Mutation:
         full_name: Optional[str] = None,
         phone_number: Optional[str] = None,
         website: Optional[str] = None,
+        profile_pic: Optional[str] = None,
         slug: Optional[str] = None,
     ) -> UpdateDigitalResponse:
         user_id = info.context["request"].state.user_id
@@ -440,6 +444,8 @@ class Mutation:
                 supabase.storage.from_("digital_card_codes").remove(filename)
 
             # Prepare the new card data
+            print(result.data[0])
+            print("profile pic= ",profile_pic)
             new_card_data = {
                 "email": email if email is not None else result.data[0]["email"],
                 "job_title": job_title
@@ -454,6 +460,7 @@ class Mutation:
                 "website": website
                 if website is not None
                 else result.data[0]["website"],
+                "profile_pic": profile_pic if profile_pic is not None else result.data[0]["profile_pic"],
                 "user_id": user_id,
                 "slug": slug if slug is not None else result.data[0]["slug"],
                 "qr_code": "placeholder" if slug_changed else result.data[0]["qr_code"],
